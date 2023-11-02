@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch all tags
+        run: git fetch --force --tags
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+      - name: Setup LibJQ
+        run: |-
+          docker run --name "libjq" -d flant/jq:b6be13d5-glibc
+          docker cp libjq:/libjq ./libjq 
+          docker rm libjq
+          echo CGO_ENABLED=1 >> $GITHUB_ENV
+          echo CGO_CFLAGS="-I$(pwd)/libjq/include" >> $GITHUB_ENV
+          echo CGO_LDFLAGS="-L$(pwd)/libjq/lib" >> $GITHUB_ENV
+      - name: Run Tests
+        run: |-
+          go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
+      - name: Upload Coverage
+        run: |-
+          bash <(curl -s https://codecov.io/bash)
