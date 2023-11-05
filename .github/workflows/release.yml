@@ -81,7 +81,7 @@ jobs:
           echo CGO_CFLAGS="-I$(pwd)/libjq/include" >> $GITHUB_ENV
           echo CGO_LDFLAGS="-L$(pwd)/libjq/lib" >> $GITHUB_ENV
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v5
         with:
           args: release --rm-dist --release-notes=./.changes/${{ steps.version.outputs.RELEASE_VERSION }}.md
         env:
