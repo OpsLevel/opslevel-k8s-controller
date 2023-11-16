@@ -3,7 +3,6 @@ package opslevel_k8s_controller
 import (
 	"encoding/json"
 	"github.com/opslevel/opslevel-jq-parser/v2023"
-	"github.com/rs/zerolog/log"
 	"strconv"
 )
 
@@ -23,7 +22,6 @@ func (f *K8SFilter) Matches(data any) bool {
 		return false
 	}
 	results, err := f.parser.Run(string(j))
-	log.Warn().Msgf("%+v\n", results)
 	return anyIsTrue(results)
 }
 

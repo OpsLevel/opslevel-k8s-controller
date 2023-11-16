@@ -2,17 +2,19 @@ package opslevel_k8s_controller
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
-type K8SControllerHandler func([]interface{})
+type K8SControllerHandler func(interface{})
+
+func nullKubernetesControllerHandler(item interface{}) {}
 
 type K8SController struct {
 	id       string
@@ -20,9 +22,6 @@ type K8SController struct {
 	queue    *workqueue.Type
 	informer cache.SharedIndexInformer
 	filter   *K8SFilter
-	maxBatch int
-	runOnce  bool
-	Channel  chan struct{}
 	OnAdd    K8SControllerHandler
 	OnUpdate K8SControllerHandler
 	OnDelete K8SControllerHandler
@@ -41,87 +40,73 @@ type K8SEvent struct {
 	Type K8SControllerEventType
 }
 
-func (c *K8SController) getLength() int {
-	current := c.queue.Len()
-	if current < c.maxBatch {
-		return current
-	} else {
-		return c.maxBatch
-	}
-}
-
 func (c *K8SController) mainloop() {
-	var matchType K8SControllerEventType
-	items := make([]interface{}, 0)
-	length := c.getLength()
+	indexer := c.informer.GetIndexer()
+
+	length := c.queue.Len()
 	for i := 0; i < length; i++ {
 		item, quit := c.queue.Get()
 		if quit {
 			log.Warn().Msg("k8s queue is shut down")
 			return
 		}
+
 		event := item.(K8SEvent)
-		if i == 0 {
-			// First item determines what event type we process
-			matchType = event.Type
-		} else {
-			if event.Type != matchType {
-				c.queue.Add(item)
-				c.queue.Done(item)
-				continue
-			}
-		}
-		obj, exists, getErr := c.informer.GetIndexer().GetByKey(event.Key)
-		if getErr != nil {
-			log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, getErr)
-			c.queue.Done(item)
-			return
+		obj, exists, err := indexer.GetByKey(event.Key)
+		if err != nil {
+			log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
+			continue
 		}
 		if !exists {
-			if matchType != ControllerEventTypeDelete {
-				log.Warn().Msgf("object with key %s doesn't exist in informer cache", event.Key)
-			}
-			c.queue.Done(item)
-			return
+			continue
+		}
+		if c.filter.Matches(obj) {
+			log.Debug().Msgf("object with key %s skipped because it matches filter", event.Key)
+			continue
+		}
+		switch event.Type {
+		case ControllerEventTypeCreate:
+			c.OnAdd(obj)
+		case ControllerEventTypeUpdate:
+			c.OnUpdate(obj)
+		case ControllerEventTypeDelete:
+			c.OnDelete(obj)
 		}
 		c.queue.Done(item)
-		items = append(items, obj)
-	}
-	switch matchType {
-	case ControllerEventTypeCreate:
-		c.OnAdd(items)
-	case ControllerEventTypeUpdate:
-		c.OnUpdate(items)
-	case ControllerEventTypeDelete:
-		c.OnDelete(items)
 	}
 }
 
-func (c *K8SController) Start() {
+// Start - starts the informer faktory and sync's the data.
+// The wait group passed in is used to track when the informer has gone
+// through 1 full loop and syncronized all the k8s data 1 time
+func (c *K8SController) Start(wg *sync.WaitGroup) {
 	defer runtime.HandleCrash()
 	defer c.queue.ShutDown()
-	c.factory.Start(c.Channel) // Starts all informers
+	if wg != nil {
+		wg.Add(1)
+	}
+	c.factory.Start(nil) // Starts all informers
 
-	for _, ready := range c.factory.WaitForCacheSync(c.Channel) {
+	for _, ready := range c.factory.WaitForCacheSync(nil) {
 		if !ready {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
 			return
 		}
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
-
-	if c.runOnce {
-		c.mainloop()
-		log.Info().Msgf("[%s] Finished", c.id)
-	} else {
-		go wait.Until(c.mainloop, time.Second, c.Channel)
-		<-c.Channel
-	}
+	go func() {
+		var hasLoopedOnce bool
+		for {
+			c.mainloop()
+			if !hasLoopedOnce {
+				wg.Done()
+				hasLoopedOnce = true
+			}
+		}
+	}()
 }
 
-func nullKubernetesControllerHandler(items []interface{}) {}
-
-func NewK8SController(selector K8SSelector, resyncInterval time.Duration, maxBatch int, runOnce bool) (*K8SController, error) {
+func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SController, error) {
 	k8sClient, err := NewK8SClient()
 	if err != nil {
 		return nil, err
@@ -135,7 +120,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration, maxBat
 	filter := NewK8SFilter(selector)
 	factory := k8sClient.GetInformerFactory(resyncInterval)
 	informer := factory.ForResource(*gvr).Informer()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err != nil {
@@ -173,11 +158,8 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration, maxBat
 		factory:  factory,
 		informer: informer,
 		filter:   filter,
-		maxBatch: maxBatch,
-		runOnce:  runOnce,
-		Channel:  make(chan struct{}),
 		OnAdd:    nullKubernetesControllerHandler,
 		OnUpdate: nullKubernetesControllerHandler,
 		OnDelete: nullKubernetesControllerHandler,
-	}, nil
+	}, err
 }
