@@ -40,40 +40,31 @@ type K8SEvent struct {
 	Type K8SControllerEventType
 }
 
-func (c *K8SController) mainloop() {
+func (c *K8SController) mainloop(item interface{}) {
 	indexer := c.informer.GetIndexer()
 
-	length := c.queue.Len()
-	for i := 0; i < length; i++ {
-		item, quit := c.queue.Get()
-		if quit {
-			log.Warn().Msg("k8s queue is shut down")
-			return
-		}
-
-		event := item.(K8SEvent)
-		obj, exists, err := indexer.GetByKey(event.Key)
-		if err != nil {
-			log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
-			continue
-		}
-		if !exists {
-			continue
-		}
-		if c.filter.Matches(obj) {
-			log.Debug().Msgf("object with key %s skipped because it matches filter", event.Key)
-			continue
-		}
-		switch event.Type {
-		case ControllerEventTypeCreate:
-			c.OnAdd(obj)
-		case ControllerEventTypeUpdate:
-			c.OnUpdate(obj)
-		case ControllerEventTypeDelete:
-			c.OnDelete(obj)
-		}
-		c.queue.Done(item)
+	event := item.(K8SEvent)
+	obj, exists, err := indexer.GetByKey(event.Key)
+	if err != nil {
+		log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
+		return
 	}
+	if !exists {
+		return
+	}
+	if c.filter.Matches(obj) {
+		log.Debug().Msgf("object with key %s skipped because it matches filter", event.Key)
+		return
+	}
+	switch event.Type {
+	case ControllerEventTypeCreate:
+		c.OnAdd(obj)
+	case ControllerEventTypeUpdate:
+		c.OnUpdate(obj)
+	case ControllerEventTypeDelete:
+		c.OnDelete(obj)
+	}
+	c.queue.Done(item)
 }
 
 // Start - starts the informer faktory and sync's the data.
@@ -97,10 +88,14 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 	go func() {
 		var hasLoopedOnce bool
 		for {
-			c.mainloop()
+			item, quit := c.queue.Get()
+			c.mainloop(item)
 			if !hasLoopedOnce {
 				wg.Done()
 				hasLoopedOnce = true
+			}
+			if quit {
+				return
 			}
 		}
 	}()
