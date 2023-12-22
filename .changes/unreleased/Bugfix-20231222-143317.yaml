@@ -1,3 +1,0 @@
-kind: Bugfix
-body: K8SSelector doesn't yaml marshal correctly
-time: 2023-12-22T14:33:17.587944-06:00
