@@ -30,11 +30,11 @@ var (
 )
 
 type K8SSelector struct {
-	ApiVersion string   `json:"apiVersion"`
-	Kind       string   `json:"kind"`
-	Namespaces []string `json:"namespaces,omitempty"`
-	Labels     []string `json:"labels,omitempty"`
-	Excludes   []string `json:"excludes,omitempty"`
+	ApiVersion string   `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string   `json:"kind" yaml:"kind"`
+	Namespaces []string `json:"namespaces,omitempty" yaml:"namespaces,omitempty"`
+	Labels     []string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Excludes   []string `json:"excludes,omitempty" yaml:"excludes,omitempty"`
 }
 
 func (selector *K8SSelector) GetListOptions() metav1.ListOptions {
