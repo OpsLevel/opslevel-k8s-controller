@@ -3,7 +3,7 @@ module github.com/opslevel/opslevel-k8s-controller/v2023
 go 1.21.0
 
 require (
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/opslevel/opslevel-jq-parser/v2023 v2023.12.11
 	github.com/rocktavious/autopilot/v2023 v2023.12.7
 	github.com/rs/zerolog v1.31.0
