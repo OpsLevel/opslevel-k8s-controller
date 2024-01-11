@@ -2,8 +2,9 @@ package opslevel_k8s_controller
 
 import (
 	"encoding/json"
-	"github.com/opslevel/opslevel-jq-parser/v2023"
 	"strconv"
+
+	opslevel_jq_parser "github.com/opslevel/opslevel-jq-parser/v2023"
 )
 
 type K8SFilter struct {
@@ -21,7 +22,8 @@ func (f *K8SFilter) Matches(data any) bool {
 	if err != nil {
 		return false
 	}
-	results, err := f.parser.Run(string(j))
+	// TODO: handle error
+	results, _ := f.parser.Run(string(j))
 	return anyIsTrue(results)
 }
 
