@@ -3,6 +3,9 @@ package opslevel_k8s_controller
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
-	"strings"
-	"time"
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"

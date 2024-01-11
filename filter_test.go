@@ -2,9 +2,10 @@ package opslevel_k8s_controller_test
 
 import (
 	"encoding/json"
-	"github.com/opslevel/opslevel-k8s-controller/v2023"
-	"github.com/rocktavious/autopilot/v2023"
 	"testing"
+
+	opslevel_k8s_controller "github.com/opslevel/opslevel-k8s-controller/v2023"
+	"github.com/rocktavious/autopilot/v2023"
 )
 
 var data = `{
@@ -50,7 +51,9 @@ func TestFilter(t *testing.T) {
 	}
 	filter4 := opslevel_k8s_controller.NewK8SFilter(selector4)
 	var parsed map[string]any
-	json.Unmarshal([]byte(data), &parsed)
+	if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+		panic(err)
+	}
 
 	// Act
 	matches1 := filter1.Matches(parsed)
