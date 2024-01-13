@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	opslevel_jq_parser "github.com/opslevel/opslevel-jq-parser/v2023"
+	opslevel_jq_parser "github.com/opslevel/opslevel-jq-parser/v2024"
 )
 
 type K8SFilter struct {

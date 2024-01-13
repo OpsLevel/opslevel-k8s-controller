@@ -21,3 +21,4 @@ coverage.txt
 # Go workspace file
 go.work
 libjq/
+.idea
