@@ -1,3 +1,3 @@
 package opslevel_k8s_controller
 
-const ReleaseVersion = "v2023.12.22"
+const ReleaseVersion = "v2024.1.13"
