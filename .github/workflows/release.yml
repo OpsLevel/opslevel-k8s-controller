@@ -92,4 +92,4 @@ jobs:
         uses: opslevel/report-deploy-github-action@v0.6.0
         with:
           integration_url: ${{ secrets.DEPLOY_INTEGRATION_URL }}
-          service: "opslevel_jq_parser"
+          service: "opslevel_k8s_controller"
