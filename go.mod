@@ -1,4 +1,4 @@
-module github.com/opslevel/opslevel-k8s-controller/v2023
+module github.com/opslevel/opslevel-k8s-controller/v2024
 
 go 1.21.0
 

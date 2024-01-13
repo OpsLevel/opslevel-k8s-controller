@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	opslevel_k8s_controller "github.com/opslevel/opslevel-k8s-controller/v2023"
+	opslevel_k8s_controller "github.com/opslevel/opslevel-k8s-controller/v2024"
 	"github.com/rocktavious/autopilot/v2023"
 )
 
