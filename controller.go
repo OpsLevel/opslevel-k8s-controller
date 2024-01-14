@@ -46,12 +46,8 @@ func (c *K8SController) mainloop(item interface{}) {
 		event   K8SEvent
 	)
 
-	if item == nil {
-		log.Error().Msg("mainloop: cannot create K8SEvent from nil interface{}")
-		return
-	}
 	if _, ok := item.(K8SEvent); !ok {
-		log.Error().Msgf("mainloop: cannot create K8SEvent from unknown interface{} '%v' '%T'", item, item)
+		log.Error().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
 		return
 	}
 	event = item.(K8SEvent)
@@ -97,17 +93,13 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
 	go func() {
-		var hasLoopedOnce bool
 		for {
 			item, quit := c.queue.Get()
-			c.mainloop(item)
-			if !hasLoopedOnce {
-				wg.Done()
-				hasLoopedOnce = true
-			}
 			if quit {
+				wg.Done()
 				return
 			}
+			c.mainloop(item)
 		}
 	}()
 }
