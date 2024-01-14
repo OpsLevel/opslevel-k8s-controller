@@ -41,20 +41,9 @@ type K8SEvent struct {
 }
 
 func (c *K8SController) mainloop(item interface{}) {
-	var (
-		indexer cache.Indexer = c.informer.GetIndexer()
-		event   K8SEvent
-	)
+	indexer := c.informer.GetIndexer()
 
-	if item == nil {
-		log.Error().Msg("mainloop: cannot create K8SEvent from nil interface{}")
-		return
-	}
-	if _, ok := item.(K8SEvent); !ok {
-		log.Error().Msgf("mainloop: cannot create K8SEvent from unknown interface{} '%v' '%T'", item, item)
-		return
-	}
-	event = item.(K8SEvent)
+	event := item.(K8SEvent)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
 		log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
@@ -99,15 +88,15 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 	go func() {
 		var hasLoopedOnce bool
 		for {
-			item, quit := c.queue.Get()
-			c.mainloop(item)
 			if !hasLoopedOnce {
 				wg.Done()
 				hasLoopedOnce = true
 			}
+			item, quit := c.queue.Get()
 			if quit {
 				return
 			}
+			c.mainloop(item)
 		}
 	}()
 }
