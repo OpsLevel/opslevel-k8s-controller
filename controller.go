@@ -41,6 +41,7 @@ type K8SEvent struct {
 }
 
 func (c *K8SController) mainloop(item interface{}) {
+	log.Debug().Str("queue_addr", fmt.Sprintf("%p", &c.queue)).Int("queue_len", c.queue.Len()).Msg("mainloop: running from top")
 	var (
 		indexer cache.Indexer = c.informer.GetIndexer()
 		event   K8SEvent
@@ -51,6 +52,7 @@ func (c *K8SController) mainloop(item interface{}) {
 		return
 	}
 	event = item.(K8SEvent)
+	defer c.queue.Done(item)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
 		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
@@ -74,7 +76,6 @@ func (c *K8SController) mainloop(item interface{}) {
 	default:
 		log.Warn().Msgf("no event handler for '%s', event type '%s'", event.Key, event.Type)
 	}
-	c.queue.Done(item)
 }
 
 // Start - starts the informer faktory and sync's the data.
@@ -82,7 +83,7 @@ func (c *K8SController) mainloop(item interface{}) {
 // through 1 full loop and syncronized all the k8s data 1 time
 func (c *K8SController) Start(wg *sync.WaitGroup) {
 	defer runtime.HandleCrash()
-	defer c.queue.ShutDown()
+	defer wg.Done()
 	if wg != nil {
 		wg.Add(1)
 	}
@@ -99,7 +100,6 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		for {
 			item, quit := c.queue.Get()
 			if quit {
-				wg.Done()
 				return
 			}
 			c.mainloop(item)
