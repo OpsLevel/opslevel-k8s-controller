@@ -1,4 +1,0 @@
-kind: Bugfix
-body: Fix bug where WaitGroup.Done() is called too early resulting in k8s events not
-  being processed
-time: 2024-01-14T01:56:52.741895-05:00
