@@ -47,20 +47,21 @@ func (c *K8SController) mainloop(item interface{}) {
 	)
 
 	if _, ok := item.(K8SEvent); !ok {
-		log.Error().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
+		log.Warn().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
 		return
 	}
 	event = item.(K8SEvent)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
-		log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
+		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
 		return
 	}
 	if !exists {
+		log.Debug().Msgf("object with key '%s' skipped because it was not found", event.Key)
 		return
 	}
 	if c.filter.Matches(obj) {
-		log.Debug().Msgf("object with key %s skipped because it matches filter", event.Key)
+		log.Debug().Msgf("object with key '%s' skipped because it matches filter", event.Key)
 		return
 	}
 	switch event.Type {
@@ -70,6 +71,8 @@ func (c *K8SController) mainloop(item interface{}) {
 		c.OnUpdate(obj)
 	case ControllerEventTypeDelete:
 		c.OnDelete(obj)
+	default:
+		log.Warn().Msgf("no event handler for '%s', event type '%s'", event.Key, event.Type)
 	}
 	c.queue.Done(item)
 }
