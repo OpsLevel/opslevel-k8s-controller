@@ -78,13 +78,11 @@ func (c *K8SController) mainloop(item interface{}) {
 	}
 }
 
-// Start - starts the informer factory, increments WaitGroup counter, and starts a goroutine.
-// The goroutine will make calls to mainloop until the queue is exhausted. Items in the queue
-// are marked as Done() by the mainloop. Once the queue is exhausted the goroutine exits
-// and Start decrements the WaitGroup counter before exiting.
+// Start - starts the informer faktory and sync's the data.
+// The wait group passed in is used to track when the informer has gone
+// through 1 full loop and syncronized all the k8s data 1 time
 func (c *K8SController) Start(wg *sync.WaitGroup) {
 	defer runtime.HandleCrash()
-	defer wg.Done()
 	if wg != nil {
 		wg.Add(1)
 	}
@@ -101,6 +99,9 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		for {
 			item, quit := c.queue.Get()
 			if quit {
+				if wg != nil {
+					wg.Done()
+				}
 				return
 			}
 			c.mainloop(item)
