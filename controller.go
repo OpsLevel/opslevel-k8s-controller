@@ -52,6 +52,7 @@ func (c *K8SController) mainloop(item interface{}) {
 		return
 	}
 	event = item.(K8SEvent)
+	defer c.queue.Done(item)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
 		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
