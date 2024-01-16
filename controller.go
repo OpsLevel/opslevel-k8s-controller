@@ -41,19 +41,28 @@ type K8SEvent struct {
 }
 
 func (c *K8SController) mainloop(item interface{}) {
-	indexer := c.informer.GetIndexer()
+	log.Debug().Str("queue_addr", fmt.Sprintf("%p", &c.queue)).Int("queue_len", c.queue.Len()).Msg("mainloop: running from top")
+	var (
+		indexer cache.Indexer = c.informer.GetIndexer()
+		event   K8SEvent
+	)
 
-	event := item.(K8SEvent)
+	if _, ok := item.(K8SEvent); !ok {
+		log.Warn().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
+		return
+	}
+	event = item.(K8SEvent)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
-		log.Warn().Msgf("error fetching object with key %s from informer cache: %v", event.Key, err)
+		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
 		return
 	}
 	if !exists {
+		log.Debug().Msgf("object with key '%s' skipped because it was not found", event.Key)
 		return
 	}
 	if c.filter.Matches(obj) {
-		log.Debug().Msgf("object with key %s skipped because it matches filter", event.Key)
+		log.Debug().Msgf("object with key '%s' skipped because it matches filter", event.Key)
 		return
 	}
 	switch event.Type {
@@ -63,17 +72,17 @@ func (c *K8SController) mainloop(item interface{}) {
 		c.OnUpdate(obj)
 	case ControllerEventTypeDelete:
 		c.OnDelete(obj)
+	default:
+		log.Warn().Msgf("no event handler for '%s', event type '%s'", event.Key, event.Type)
 	}
-	c.queue.Done(item)
 }
 
-// Start - starts the informer faktory and sync's the data.
+// Start - starts the informer factory and syncs the data.
 // The wait group passed in is used to track when the informer has gone
-// through 1 full loop and syncronized all the k8s data 1 time
+// through 1 full loop and syncronized all the k8s data exactly 1 time
 func (c *K8SController) Start(wg *sync.WaitGroup) {
-	defer runtime.HandleCrash()
-	defer c.queue.ShutDown()
 	if wg != nil {
+		defer c.queue.ShutDown()
 		wg.Add(1)
 	}
 	c.factory.Start(nil) // Starts all informers
@@ -86,17 +95,17 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
 	go func() {
-		var hasLoopedOnce bool
+		defer runtime.HandleCrash()
+		if wg != nil {
+			defer wg.Done()
+		}
 		for {
 			item, quit := c.queue.Get()
-			c.mainloop(item)
-			if !hasLoopedOnce {
-				wg.Done()
-				hasLoopedOnce = true
-			}
 			if quit {
-				return
+				break
 			}
+			c.mainloop(item)
+			c.queue.Done(item)
 		}
 	}()
 }
