@@ -1,3 +1,0 @@
-kind: Bugfix
-body: Fix crash when no k8s events are received
-time: 2024-01-13T18:55:50.556399-05:00
