@@ -81,7 +81,6 @@ func (c *K8SController) mainloop(item interface{}) {
 // The wait group passed in is used to track when the informer has gone
 // through 1 full loop and syncronized all the k8s data exactly 1 time
 func (c *K8SController) Start(wg *sync.WaitGroup) {
-	defer runtime.HandleCrash()
 	if wg != nil {
 		defer c.queue.ShutDown()
 		wg.Add(1)
@@ -96,6 +95,7 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
 	go func() {
+		defer runtime.HandleCrash()
 		if wg != nil {
 			defer wg.Done()
 		}
