@@ -1,0 +1,4 @@
+kind: Bugfix
+body: Fix concurrency bug that caused the informer queue to never become exhausted,
+  leading to new events from informers not being processed.
+time: 2024-01-15T13:50:40.077433-05:00
