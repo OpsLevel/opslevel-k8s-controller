@@ -52,7 +52,6 @@ func (c *K8SController) mainloop(item interface{}) {
 		return
 	}
 	event = item.(K8SEvent)
-	defer c.queue.Done(item)
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
 		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
@@ -78,12 +77,13 @@ func (c *K8SController) mainloop(item interface{}) {
 	}
 }
 
-// Start - starts the informer faktory and sync's the data.
+// Start - starts the informer factory and syncs the data.
 // The wait group passed in is used to track when the informer has gone
-// through 1 full loop and syncronized all the k8s data 1 time
+// through 1 full loop and syncronized all the k8s data exactly 1 time
 func (c *K8SController) Start(wg *sync.WaitGroup) {
 	defer runtime.HandleCrash()
 	if wg != nil {
+		defer c.queue.ShutDown()
 		wg.Add(1)
 	}
 	c.factory.Start(nil) // Starts all informers
@@ -96,15 +96,16 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
 	go func() {
+		if wg != nil {
+			defer wg.Done()
+		}
 		for {
 			item, quit := c.queue.Get()
 			if quit {
-				if wg != nil {
-					wg.Done()
-				}
-				return
+				break
 			}
 			c.mainloop(item)
+			c.queue.Done(item)
 		}
 	}()
 }
