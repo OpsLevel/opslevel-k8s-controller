@@ -84,9 +84,6 @@ func (c *K8SController) mainloop(item interface{}) {
 // If a wait group is not passed, Start will run continuously until the passed context
 // is interrupted.
 func (c *K8SController) Start(wg *sync.WaitGroup, ctx context.Context) {
-	if wg != nil {
-		defer wg.Done()
-	}
 	c.factory.Start(nil) // Starts all informers
 	for _, ready := range c.factory.WaitForCacheSync(nil) {
 		if !ready {
