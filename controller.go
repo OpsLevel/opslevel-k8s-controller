@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opslevel/opslevel-k8s-controller/v2024/queue"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 type K8SControllerHandler func(interface{})
@@ -20,7 +20,7 @@ func nullKubernetesControllerHandler(item interface{}) {}
 type K8SController struct {
 	id       string
 	factory  dynamicinformer.DynamicSharedInformerFactory
-	queue    *workqueue.Type
+	queue    *queue.LengthyQueue
 	informer cache.SharedIndexInformer
 	filter   *K8SFilter
 	OnAdd    K8SControllerHandler
@@ -79,6 +79,7 @@ func (c *K8SController) mainloop(item interface{}) {
 }
 
 func (c *K8SController) runInformers() {
+	c.factory.Start(nil)
 	for _, ready := range c.factory.WaitForCacheSync(nil) {
 		if !ready {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
@@ -90,30 +91,28 @@ func (c *K8SController) runInformers() {
 
 // RunOnce starts the informer factory and syncs the data exactly once and then decrements the WaitGroup.
 func (c *K8SController) RunOnce(wg *sync.WaitGroup) {
-	c.factory.Start(nil)
 	c.runInformers()
 
 	go func() {
 		defer runtime.HandleCrash()
-		if wg != nil {
-			defer wg.Done()
-		}
+		defer wg.Done()
 		for {
+			if c.queue.Len() == 0 {
+				c.queue.ShutDown()
+			}
 			item, quit := c.queue.Get()
 			if quit {
+				log.Debug().Msg("RunOnce: breaking")
 				break
 			}
-			c.queue.Done(item)
 			c.mainloop(item)
+			c.queue.Done(item)
 		}
 	}()
-	time.Sleep(time.Second)
-	c.queue.ShutDown() // TODO: once this is called the for loop breaks. Is 1 second enough?
 }
 
 // Run starts the informer factory and syncs data continuously until the context is cancelled.
 func (c *K8SController) Run(ctx context.Context) {
-	c.factory.Start(nil)
 	c.runInformers()
 
 	go func() {
@@ -121,10 +120,11 @@ func (c *K8SController) Run(ctx context.Context) {
 		for {
 			item, quit := c.queue.Get()
 			if quit {
+				log.Debug().Msg("Run: breaking")
 				break
 			}
-			c.queue.Done(item)
 			c.mainloop(item)
+			c.queue.Done(item)
 		}
 	}()
 }
@@ -139,7 +139,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 		return nil, err
 	}
 
-	queue := workqueue.New()
+	queue := queue.New()
 	filter := NewK8SFilter(selector)
 	factory := k8sClient.GetInformerFactory(resyncInterval)
 	informer := factory.ForResource(*gvr).Informer()
