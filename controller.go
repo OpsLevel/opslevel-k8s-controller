@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opslevel/opslevel-k8s-controller/v2024/queue"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 type K8SControllerHandler func(interface{})
@@ -20,7 +20,7 @@ func nullKubernetesControllerHandler(item interface{}) {}
 type K8SController struct {
 	id       string
 	factory  dynamicinformer.DynamicSharedInformerFactory
-	queue    *queue.LengthyQueue
+	queue    *workqueue.Type
 	informer cache.SharedIndexInformer
 	filter   *K8SFilter
 	OnAdd    K8SControllerHandler
@@ -97,9 +97,6 @@ func (c *K8SController) RunOnce(wg *sync.WaitGroup) {
 		defer runtime.HandleCrash()
 		defer wg.Done()
 		for {
-			if c.queue.Len() == 0 {
-				c.queue.ShutDown()
-			}
 			item, quit := c.queue.Get()
 			if quit {
 				log.Debug().Msg("RunOnce: breaking")
@@ -109,6 +106,7 @@ func (c *K8SController) RunOnce(wg *sync.WaitGroup) {
 			c.queue.Done(item)
 		}
 	}()
+	c.queue.ShutDownWithDrain()
 }
 
 // Run starts the informer factory and syncs data continuously until the context is cancelled.
@@ -118,7 +116,10 @@ func (c *K8SController) Run(ctx context.Context) {
 	go func() {
 		defer runtime.HandleCrash()
 		for {
-			item, quit := c.queue.Get()
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go 
+			item, quit := c.queue.Get() // TODO: this is blocking - is that a problem?
 			if quit {
 				log.Debug().Msg("Run: breaking")
 				break
@@ -139,7 +140,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 		return nil, err
 	}
 
-	queue := queue.New()
+	queue := workqueue.New()
 	filter := NewK8SFilter(selector)
 	factory := k8sClient.GetInformerFactory(resyncInterval)
 	informer := factory.ForResource(*gvr).Informer()
