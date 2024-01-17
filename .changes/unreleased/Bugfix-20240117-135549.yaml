@@ -1,0 +1,4 @@
+kind: Bugfix
+body: Fix bug where events could sometimes be missed when starting K8sController to
+  run once
+time: 2024-01-17T13:55:49.226371-05:00
