@@ -1,6 +1,7 @@
 package opslevel_k8s_controller
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -77,16 +78,7 @@ func (c *K8SController) mainloop(item interface{}) {
 	}
 }
 
-// Start - starts the informer factory and syncs the data.
-// The wait group passed in is used to track when the informer has gone
-// through 1 full loop and syncronized all the k8s data exactly 1 time
-func (c *K8SController) Start(wg *sync.WaitGroup) {
-	if wg != nil {
-		defer c.queue.ShutDown()
-		wg.Add(1)
-	}
-	c.factory.Start(nil) // Starts all informers
-
+func (c *K8SController) runInformers() {
 	for _, ready := range c.factory.WaitForCacheSync(nil) {
 		if !ready {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
@@ -94,6 +86,13 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		}
 		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
 	}
+}
+
+// RunOnce starts the informer factory and syncs the data exactly once and then decrements the WaitGroup.
+func (c *K8SController) RunOnce(wg *sync.WaitGroup) {
+	c.factory.Start(nil)
+	c.runInformers()
+
 	go func() {
 		defer runtime.HandleCrash()
 		if wg != nil {
@@ -104,8 +103,28 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 			if quit {
 				break
 			}
-			c.mainloop(item)
 			c.queue.Done(item)
+			c.mainloop(item)
+		}
+	}()
+	time.Sleep(time.Second)
+	c.queue.ShutDown() // TODO: once this is called the for loop breaks. Is 1 second enough?
+}
+
+// Run starts the informer factory and syncs data continuously until the context is cancelled.
+func (c *K8SController) Run(ctx context.Context) {
+	c.factory.Start(nil)
+	c.runInformers()
+
+	go func() {
+		defer runtime.HandleCrash()
+		for {
+			item, quit := c.queue.Get()
+			if quit {
+				break
+			}
+			c.queue.Done(item)
+			c.mainloop(item)
 		}
 	}()
 }
