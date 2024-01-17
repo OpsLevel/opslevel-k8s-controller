@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
+	queue "github.com/opslevel/opslevel-k8s-controller/v2024/queue.go"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 type K8SControllerHandler func(interface{})
@@ -20,7 +20,7 @@ func nullKubernetesControllerHandler(item interface{}) {}
 type K8SController struct {
 	id       string
 	factory  dynamicinformer.DynamicSharedInformerFactory
-	queue    *workqueue.Type
+	queue    *queue.Queue
 	informer cache.SharedIndexInformer
 	filter   *K8SFilter
 	OnAdd    K8SControllerHandler
@@ -90,23 +90,25 @@ func (c *K8SController) runInformers() {
 }
 
 // RunOnce starts the informer factory and syncs the data exactly once and then decrements the WaitGroup.
-func (c *K8SController) RunOnce(wg *sync.WaitGroup) {
+// It can also be cancelled early by the context.
+func (c *K8SController) RunOnce(wg *sync.WaitGroup, ctx context.Context) {
 	c.runInformers()
 
 	go func() {
 		defer runtime.HandleCrash()
 		defer wg.Done()
 		for {
-			item, quit := c.queue.Get()
+			if c.queue.Len() == 0 {
+				c.queue.SetExpired()
+			}
+			item, quit := c.queue.Pop(ctx)
 			if quit {
 				log.Debug().Msg("RunOnce: breaking")
 				break
 			}
 			c.mainloop(item)
-			c.queue.Done(item)
 		}
 	}()
-	c.queue.ShutDownWithDrain()
 }
 
 // Run starts the informer factory and syncs data continuously until the context is cancelled.
@@ -116,16 +118,12 @@ func (c *K8SController) Run(ctx context.Context) {
 	go func() {
 		defer runtime.HandleCrash()
 		for {
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go 
-			item, quit := c.queue.Get() // TODO: this is blocking - is that a problem?
+			item, quit := c.queue.Pop(ctx)
 			if quit {
 				log.Debug().Msg("Run: breaking")
 				break
 			}
 			c.mainloop(item)
-			c.queue.Done(item)
 		}
 	}()
 }
@@ -140,7 +138,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 		return nil, err
 	}
 
-	queue := workqueue.New()
+	queue := queue.New()
 	filter := NewK8SFilter(selector)
 	factory := k8sClient.GetInformerFactory(resyncInterval)
 	informer := factory.ForResource(*gvr).Informer()
@@ -150,7 +148,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 			if err != nil {
 				return
 			}
-			queue.Add(K8SEvent{
+			queue.Insert(K8SEvent{
 				Key:  key,
 				Type: ControllerEventTypeCreate,
 			})
@@ -160,7 +158,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 			if err != nil {
 				return
 			}
-			queue.Add(K8SEvent{
+			queue.Insert(K8SEvent{
 				Key:  key,
 				Type: ControllerEventTypeUpdate,
 			})
@@ -170,7 +168,7 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 			if err != nil {
 				return
 			}
-			queue.Add(K8SEvent{
+			queue.Insert(K8SEvent{
 				Key:  key,
 				Type: ControllerEventTypeDelete,
 			})
