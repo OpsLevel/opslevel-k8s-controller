@@ -116,7 +116,7 @@ func (c *K8SController) Start(wg *sync.WaitGroup, ctx context.Context) {
 			// Stop execution if the context is cancelled before get event finishes
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Breaking: on signal")
+				log.Debug().Msg("Breaking: on signal")
 				break body
 			case item = <-itemCh:
 				quit = <-quitCh
