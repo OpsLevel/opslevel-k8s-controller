@@ -1,6 +1,7 @@
 package opslevel_k8s_controller
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -77,16 +78,13 @@ func (c *K8SController) mainloop(item interface{}) {
 	}
 }
 
-// Start - starts the informer factory and syncs the data.
-// The wait group passed in is used to track when the informer has gone
-// through 1 full loop and syncronized all the k8s data exactly 1 time
-func (c *K8SController) Start(wg *sync.WaitGroup) {
-	if wg != nil {
-		defer c.queue.ShutDown()
-		wg.Add(1)
-	}
+// Start starts the informer factory and sends events in the queue to the main loop.
+// If a wait group is passed, Start will decrement it once it processes all events
+// in the queue after one loop.
+// If a wait group is not passed, Start will run continuously until the passed context
+// is interrupted.
+func (c *K8SController) Start(wg *sync.WaitGroup, ctx context.Context) {
 	c.factory.Start(nil) // Starts all informers
-
 	for _, ready := range c.factory.WaitForCacheSync(nil) {
 		if !ready {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
@@ -99,15 +97,38 @@ func (c *K8SController) Start(wg *sync.WaitGroup) {
 		if wg != nil {
 			defer wg.Done()
 		}
+		var item interface{}
+		var quit bool
+	body:
 		for {
-			item, quit := c.queue.Get()
+			// This is a blocking operation performed in a goroutine to get the next event
+			itemCh := make(chan interface{}, 1)
+			quitCh := make(chan bool, 1)
+			go func() {
+				item, quit = c.queue.Get()
+				itemCh <- item
+				quitCh <- quit
+			}()
+
+			// Stop execution if the context is cancelled before get event finishes
+			select {
+			case <-ctx.Done():
+				log.Debug().Msg("Breaking: on signal")
+				break body
+			case item = <-itemCh:
+				quit = <-quitCh
+			}
 			if quit {
+				log.Debug().Msg("Breaking: on quit")
 				break
 			}
 			c.mainloop(item)
 			c.queue.Done(item)
 		}
 	}()
+	if wg != nil {
+		c.queue.ShutDownWithDrain()
+	}
 }
 
 func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SController, error) {
