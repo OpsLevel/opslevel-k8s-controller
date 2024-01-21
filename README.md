@@ -1,22 +1,22 @@
 <p align="center">
-    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/blob/main/LICENSE" alt="License">
-        <img src="https://img.shields.io/github/license/OpsLevel/opslevel-k8s-controller.svg" /></a>
-    <a href="http://golang.org" alt="Made With Go">
-        <img src="https://img.shields.io/github/go-mod/go-version/OpsLevel/opslevel-k8s-controller" /></a>
-    <a href="https://GitHub.com/OpsLevel/opslevel-k8s-controller/releases/" alt="Release">
-        <img src="https://img.shields.io/github/v/release/OpsLevel/opslevel-k8s-controller?include_prereleases" /></a>
-    <a href="https://GitHub.com/OpsLevel/opslevel-k8s-controller/issues/" alt="Issues">
-        <img src="https://img.shields.io/github/issues/OpsLevel/opslevel-k8s-controller.svg" /></a>
-    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/graphs/contributors" alt="Contributors">
-        <img src="https://img.shields.io/github/contributors/OpsLevel/opslevel-k8s-controller" /></a>
-    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/pulse" alt="Activity">
-        <img src="https://img.shields.io/github/commit-activity/m/OpsLevel/opslevel-k8s-controller" /></a>
-	<a href="https://codecov.io/gh/OpsLevel/opslevel-k8s-controller">
-  		<img src="https://codecov.io/gh/OpsLevel/opslevel-k8s-controller/branch/main/graph/badge.svg?token=GHQHRIJ9UW"/></a>
-    <a href="https://dependabot.com/" alt="Dependabot">
-        <img src="https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot" /></a>
-    <a href="https://pkg.go.dev/github.com/opslevel/opslevel-k8s-controller/v2024" alt="Go Reference">
-        <img src="https://pkg.go.dev/badge/github.com/opslevel/opslevel.svg" /></a>
+    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/OpsLevel/opslevel-k8s-controller.svg" alt="License" /></a>
+    <a href="https://go.dev">
+        <img src="https://img.shields.io/github/go-mod/go-version/OpsLevel/opslevel-k8s-controller" alt="Made With Go" /></a>
+    <a href="https://GitHub.com/OpsLevel/opslevel-k8s-controller/releases/">
+        <img src="https://img.shields.io/github/v/release/OpsLevel/opslevel-k8s-controller?include_prereleases" alt="Release" /></a>
+    <a href="https://GitHub.com/OpsLevel/opslevel-k8s-controller/issues/">
+        <img src="https://img.shields.io/github/issues/OpsLevel/opslevel-k8s-controller.svg" alt="Issues" /></a>
+    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/graphs/contributors">
+        <img src="https://img.shields.io/github/contributors/OpsLevel/opslevel-k8s-controller" alt="Contributors" /></a>
+    <a href="https://github.com/OpsLevel/opslevel-k8s-controller/pulse">
+        <img src="https://img.shields.io/github/commit-activity/m/OpsLevel/opslevel-k8s-controller" alt="Activity" /></a>
+    <a href="https://codecov.io/gh/OpsLevel/opslevel-k8s-controller">
+        <img src="https://codecov.io/gh/OpsLevel/opslevel-k8s-controller/branch/main/graph/badge.svg?token=GHQHRIJ9UW" alt="CodeCov" /></a>
+    <a href="https://dependabot.com/">
+        <img src="https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot" alt="Dependabot" /></a>
+    <a href="https://pkg.go.dev/github.com/opslevel/opslevel-k8s-controller/v2024">
+        <img src="https://pkg.go.dev/badge/github.com/opslevel/opslevel.svg" alt="Go Reference" /></a>
 </p>
 
 
