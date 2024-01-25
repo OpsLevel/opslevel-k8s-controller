@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+    paths:
+      - '.github/workflows/tests.yml'
+      - '**.go'
+      - 'go.mod'
 
 jobs:
   test:
@@ -20,6 +24,13 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: go.mod
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Setup LibJQ
         run: |-
           docker run --name "libjq" -d flant/jq:b6be13d5-glibc
@@ -28,6 +39,11 @@ jobs:
           echo CGO_ENABLED=1 >> $GITHUB_ENV
           echo CGO_CFLAGS="-I$(pwd)/libjq/include" >> $GITHUB_ENV
           echo CGO_LDFLAGS="-L$(pwd)/libjq/lib" >> $GITHUB_ENV
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run quality checks and test code
         run: task ci
       - name: Upload Coverage
