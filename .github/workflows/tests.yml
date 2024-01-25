@@ -23,14 +23,16 @@ jobs:
       - name: Setup LibJQ
         run: |-
           docker run --name "libjq" -d flant/jq:b6be13d5-glibc
-          docker cp libjq:/libjq ./libjq 
+          docker cp libjq:/libjq ./libjq
           docker rm libjq
           echo CGO_ENABLED=1 >> $GITHUB_ENV
           echo CGO_CFLAGS="-I$(pwd)/libjq/include" >> $GITHUB_ENV
           echo CGO_LDFLAGS="-L$(pwd)/libjq/lib" >> $GITHUB_ENV
-      - name: Run Tests
-        run: |-
-          go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
+      - name: Run quality checks and test code
+        run: task ci
       - name: Upload Coverage
-        run: |-
-          bash <(curl -s https://codecov.io/bash)
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.txt
+          fail_ci_if_error: false
+          verbose: true
