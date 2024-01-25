@@ -1,3 +1,0 @@
-kind: Bugfix
-body: Prevent nil pointer dereference when reading K8sEvents
-time: 2024-01-15T22:28:06.713115-05:00

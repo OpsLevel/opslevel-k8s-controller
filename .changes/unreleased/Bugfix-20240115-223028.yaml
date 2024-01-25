@@ -1,4 +1,0 @@
-kind: Bugfix
-body: The mainloop now supports a nil waitgroup so that the controller can be used
-  continuously instead of for just one run
-time: 2024-01-15T22:30:28.859207-05:00
