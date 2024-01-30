@@ -10,6 +10,7 @@ kinds:
   - label: Feature
   - label: Refactor
   - label: Deprecated
+  - label: Dependency
   - label: Removed
   - label: Bugfix
   - label: Docs
