@@ -40,7 +40,7 @@ jobs:
           echo CGO_CFLAGS="-I$(pwd)/libjq/include" >> $GITHUB_ENV
           echo CGO_LDFLAGS="-L$(pwd)/libjq/lib" >> $GITHUB_ENV
       - name: Install Task
-        uses: arduino/setup-task@v1
+        uses: arduino/setup-task@v2
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
