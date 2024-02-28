@@ -43,16 +43,13 @@ type K8SEvent struct {
 
 func (c *K8SController) mainloop(item interface{}) {
 	log.Debug().Str("queue_addr", fmt.Sprintf("%p", &c.queue)).Int("queue_len", c.queue.Len()).Msg("mainloop: running from top")
-	var (
-		indexer cache.Indexer = c.informer.GetIndexer()
-		event   K8SEvent
-	)
 
 	if _, ok := item.(K8SEvent); !ok {
 		log.Warn().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
 		return
 	}
-	event = item.(K8SEvent)
+	event := item.(K8SEvent)
+	indexer := c.informer.GetIndexer()
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
 		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
