@@ -6,7 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
+
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
@@ -18,14 +19,15 @@ type K8SControllerHandler func(interface{})
 func nullKubernetesControllerHandler(item interface{}) {}
 
 type K8SController struct {
-	id       string
-	factory  dynamicinformer.DynamicSharedInformerFactory
-	queue    *workqueue.Type
-	informer cache.SharedIndexInformer
-	filter   *K8SFilter
 	OnAdd    K8SControllerHandler
-	OnUpdate K8SControllerHandler
 	OnDelete K8SControllerHandler
+	OnUpdate K8SControllerHandler
+	factory  dynamicinformer.DynamicSharedInformerFactory
+	filter   *K8SFilter
+	id       string
+	informer cache.SharedIndexInformer
+	log      *zerolog.Logger
+	queue    *workqueue.Type
 }
 
 type K8SControllerEventType string
@@ -42,25 +44,27 @@ type K8SEvent struct {
 }
 
 func (c *K8SController) mainloop(item interface{}) {
-	log.Debug().Str("queue_addr", fmt.Sprintf("%p", &c.queue)).Int("queue_len", c.queue.Len()).Msg("mainloop: running from top")
+	log := c.log.With().Str("where", "mainloop").Int("queue_len", c.queue.Len()).Logger()
+	log.Debug().Msg("mainloop: running from top")
 
 	if _, ok := item.(K8SEvent); !ok {
-		log.Warn().Msgf("mainloop: cannot create K8SEvent from unknown interface '%T'", item)
+		log.Warn().Msgf("cannot create K8SEvent from unknown interface '%T'", item)
 		return
 	}
 	event := item.(K8SEvent)
+	log = log.With().Str("k8s_event_key", event.Key).Str("k8s_event_type", string(event.Type)).Logger()
 	indexer := c.informer.GetIndexer()
 	obj, exists, err := indexer.GetByKey(event.Key)
 	if err != nil {
-		log.Warn().Msgf("error fetching object with key '%s' from informer cache: '%v'", event.Key, err)
+		log.Error().Err(err).Msg("error fetching object from informer cache")
 		return
 	}
 	if !exists {
-		log.Debug().Msgf("object with key '%s' skipped because it was not found", event.Key)
+		log.Debug().Msg("object skipped because it was not found")
 		return
 	}
 	if c.filter.Matches(obj) {
-		log.Debug().Msgf("object with key '%s' skipped because it matches filter", event.Key)
+		log.Debug().Msg("object skipped because it matches filter")
 		return
 	}
 	switch event.Type {
@@ -71,7 +75,7 @@ func (c *K8SController) mainloop(item interface{}) {
 	case ControllerEventTypeDelete:
 		c.OnDelete(obj)
 	default:
-		log.Warn().Msgf("no event handler for '%s', event type '%s'", event.Key, event.Type)
+		log.Warn().Msg("no event handler for key and type")
 	}
 }
 
@@ -83,11 +87,12 @@ func (c *K8SController) mainloop(item interface{}) {
 func (c *K8SController) Start(ctx context.Context, wg *sync.WaitGroup) {
 	c.factory.Start(nil) // Starts all informers
 	for _, ready := range c.factory.WaitForCacheSync(nil) {
+		c.log.With().Str("where", "start.wait_for_cache_sync").Logger()
 		if !ready {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
 			return
 		}
-		log.Info().Msgf("[%s] Informer is ready and synced", c.id)
+		c.log.Info().Msg("Informer is ready and synced")
 	}
 	go func() {
 		defer runtime.HandleCrash()
@@ -110,13 +115,13 @@ func (c *K8SController) Start(ctx context.Context, wg *sync.WaitGroup) {
 			// Stop execution if the context is cancelled before get event finishes
 			select {
 			case <-ctx.Done():
-				log.Debug().Msg("Breaking: on signal")
+				c.log.Debug().Msg("Breaking: on signal")
 				break body
 			case item = <-itemCh:
 				quit = <-quitCh
 			}
 			if quit {
-				log.Debug().Msg("Breaking: on quit")
+				c.log.Debug().Msg("Breaking: on quit")
 				break
 			}
 			c.mainloop(item)
@@ -128,7 +133,8 @@ func (c *K8SController) Start(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SController, error) {
+// NewK8SController instantiates a new controller. Pass in a log or zerolog.Nop() to disable logging.
+func NewK8SController(logger *zerolog.Logger, selector K8SSelector, resyncInterval time.Duration) (*K8SController, error) {
 	k8sClient, err := NewK8SClient()
 	if err != nil {
 		return nil, err
@@ -174,14 +180,17 @@ func NewK8SController(selector K8SSelector, resyncInterval time.Duration) (*K8SC
 			})
 		},
 	})
+	controllerId := fmt.Sprintf("%s/%s/%s", gvr.Group, gvr.Version, gvr.Resource)
+	log := logger.With().Str("controller_id", controllerId).Logger()
 	return &K8SController{
-		id:       fmt.Sprintf("%s/%s/%s", gvr.Group, gvr.Version, gvr.Resource),
-		queue:    queue,
-		factory:  factory,
-		informer: informer,
-		filter:   filter,
 		OnAdd:    nullKubernetesControllerHandler,
-		OnUpdate: nullKubernetesControllerHandler,
 		OnDelete: nullKubernetesControllerHandler,
+		OnUpdate: nullKubernetesControllerHandler,
+		factory:  factory,
+		filter:   filter,
+		id:       controllerId,
+		informer: informer,
+		log:      &log,
+		queue:    queue,
 	}, err
 }
