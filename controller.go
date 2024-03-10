@@ -92,7 +92,7 @@ func (c *K8SController) Start(ctx context.Context, wg *sync.WaitGroup) {
 			runtime.HandleError(fmt.Errorf("[%s] Timed out waiting for caches to sync", c.id))
 			return
 		}
-		c.log.Info().Msg("Informer is ready and synced")
+		c.log.Debug().Msg("Informer is ready and synced")
 	}
 	go func() {
 		defer runtime.HandleCrash()
