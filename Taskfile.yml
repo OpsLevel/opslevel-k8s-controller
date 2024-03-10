@@ -10,6 +10,7 @@ tasks:
     deps:
       - install-gofumpt
       - install-golangci-lint
+      - install-nilaway
     cmds:
       - which jq > /dev/null
       - task: lint
@@ -20,8 +21,8 @@ tasks:
     dir: "{{.SRC_DIR}}"
     cmds:
       - test -z "$(gofumpt -d -e . | tee /dev/stderr)"
-      - go vet ./...
       - golangci-lint run
+      - nilaway -test=false -include-pkgs='github.com/opslevel/opslevel-k8s-controller' ./...
 
   fix:
     desc: Fix formatting, linting, go.mod, and update submodule
@@ -81,6 +82,13 @@ tasks:
     cmds:
       - task: go-install-tool
         vars: { GO_TOOL: "changie", GO_TOOL_PATH: "github.com/miniscruff/changie@latest" }
+
+  install-nilaway:
+    desc: go install "nilaway"
+    internal: true
+    cmds:
+      - task: go-install-tool
+        vars: { GO_TOOL: "nilaway", GO_TOOL_PATH: "go.uber.org/nilaway/cmd/nilaway@latest" }
 
   install-gofumpt:
     desc: go install "gofumpt"
