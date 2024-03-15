@@ -27,7 +27,7 @@ tasks:
     cmds:
       - test -z "$(gofumpt -d -e . | tee /dev/stderr)"
       - golangci-lint run
-      - nilaway -test=false ./...
+      - nilaway -include-pkgs='github.com/opslevel/opslevel-k8s-controller' -test=false ./...
 
   fix:
     desc: Fix formatting, linting, go.mod, and update submodule
