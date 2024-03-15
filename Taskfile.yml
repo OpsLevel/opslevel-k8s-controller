@@ -4,29 +4,36 @@ version: '3'
 
 dotenv: ['.env']
 
+env:
+  vYEAR: "v2024"
+  OPSLEVEL_GO_PKG: "github.com/opslevel/opslevel-go/{{.vYEAR}}"
+  OPSLEVEL_JQ_PARSER_PKG: "github.com/opslevel/opslevel-jq-parser/{{.vYEAR}}"
+
 tasks:
   ci:
     desc: Workflow to run in CI
     deps:
       - install-gofumpt
       - install-golangci-lint
+      - install-nilaway
     cmds:
       - which jq > /dev/null
       - task: lint
+      - task: has-latest-opslevel-dependencies
       - task: test
 
   lint:
     desc: Formatting and linting
-    dir: "{{.SRC_DIR}}"
     cmds:
       - test -z "$(gofumpt -d -e . | tee /dev/stderr)"
       - go vet ./...
       - golangci-lint run
+      - nilaway -test=false ./...
 
   fix:
     desc: Fix formatting, linting, go.mod, and update submodule
-    dir: "{{.SRC_DIR}}"
     cmds:
+      - task: update-opslevel-deps
       - gofumpt -w .
       - go get -u
       - go mod tidy
@@ -41,16 +48,48 @@ tasks:
       - task: install-changie
       - task: install-gofumpt
       - task: install-golangci-lint
+      - task: install-nilaway
       - cmd: echo "Development tools installed!"
         silent: true
 
   test:
     desc: Run tests
-    dir: "{{.SRC_DIR}}"
     cmds:
       - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./... {{ .CLI_ARGS }}
 
+  update-opslevel-deps:
+    desc: Update opslevel dependencies to latest release
+    cmds:
+      - go get -u "{{.OPSLEVEL_GO_PKG}}" "{{.OPSLEVEL_JQ_PARSER_PKG}}"
+
   # internal (not directly called) tasks
+
+  has-latest-opslevel-dependencies:
+    desc: Check if opslevel dependencies are up to date in go.mod
+    silent: true
+    cmds:
+      - for: [ "{{.OPSLEVEL_GO_PKG}}", "{{.OPSLEVEL_JQ_PARSER_PKG}}" ]
+        task: has-latest-opslevel-dep
+        vars:
+          OPSLEVEL_PKG: "{{.ITEM}}"
+
+  has-latest-opslevel-dep:
+    internal: true
+    silent: true
+    vars:
+      LATEST_OPSLEVEL_PKG_VERSION:
+        sh: go list -u -m -versions {{.OPSLEVEL_PKG}} | awk '{print $NF}'
+    cmds:
+      - |-
+        if [[ {{.LATEST_OPSLEVEL_PKG_VERSION}} == $(go list -m --json '{{.OPSLEVEL_PKG}}' | jq -r '.Version') ]]; then
+          echo "Using latest version of {{.OPSLEVEL_PKG}} - {{.LATEST_OPSLEVEL_PKG_VERSION}}";
+        else
+          echo "WARNING: current version of {{.OPSLEVEL_PKG}} is behind '{{.LATEST_OPSLEVEL_PKG_VERSION}}'"
+          echo "Run 'task fix' to get latest version"
+          exit 1
+        fi
+    requires:
+      vars: [OPSLEVEL_PKG]
 
   brew-install-jq:
     internal: true
@@ -95,3 +134,10 @@ tasks:
     cmds:
       - task: go-install-tool
         vars: { GO_TOOL: "golangci-lint", GO_TOOL_PATH: "github.com/golangci/golangci-lint/cmd/golangci-lint@latest" }
+
+  install-nilaway:
+    desc: go install "nilaway"
+    internal: true
+    cmds:
+      - task: go-install-tool
+        vars: { GO_TOOL: "nilaway", GO_TOOL_PATH: "go.uber.org/nilaway/cmd/nilaway@latest" }
