@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -48,7 +49,11 @@ func (selector *K8SSelector) LabelSelector() string {
 	var labels []string
 	for _, label := range selector.Labels {
 		data := strings.Split(label, "=")
-		labels = append(labels, fmt.Sprintf("%s=%s", data[0], data[1]))
+		if len(data) == 2 {
+			labels = append(labels, fmt.Sprintf("%s=%s", data[0], data[1]))
+		} else {
+			log.Warn().Msgf("error handling a label selector: could not split label '%s'", label)
+		}
 	}
 	return strings.Join(labels, ",")
 }
@@ -137,7 +142,11 @@ func (c *K8SClient) GetNamespaces(selector K8SSelector) ([]string, error) {
 
 func (c *K8SClient) GetAllNamespaces() ([]string, error) {
 	var output []string
-	resources, queryErr := c.Client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+	coreClient := c.Client.CoreV1()
+	if coreClient == nil {
+		return output, fmt.Errorf("corev1 is nil")
+	}
+	resources, queryErr := coreClient.Namespaces().List(context.Background(), metav1.ListOptions{})
 	if queryErr != nil {
 		return output, queryErr
 	}
