@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -50,6 +51,8 @@ func (selector *K8SSelector) LabelSelector() string {
 		data := strings.Split(label, "=")
 		if len(data) == 2 {
 			labels = append(labels, fmt.Sprintf("%s=%s", data[0], data[1]))
+		} else {
+			log.Warn().Msgf("error handling a label selector: could not split label '%s'", label)
 		}
 	}
 	return strings.Join(labels, ",")
