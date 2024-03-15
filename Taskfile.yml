@@ -26,7 +26,6 @@ tasks:
     desc: Formatting and linting
     cmds:
       - test -z "$(gofumpt -d -e . | tee /dev/stderr)"
-      - go vet ./...
       - golangci-lint run
       - nilaway -test=false ./...
 
