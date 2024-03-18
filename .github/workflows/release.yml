@@ -43,7 +43,7 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run quality checks and test code
+      - name: Verify release has latest OpsLevel dependencies
         run: task has-latest-opslevel-dependencies
       - name: Set Release Version
         id: version
