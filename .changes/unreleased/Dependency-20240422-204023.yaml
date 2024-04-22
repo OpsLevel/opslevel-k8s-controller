@@ -1,0 +1,3 @@
+kind: Dependency
+body: Bump k8s.io/client-go from 0.29.3 to 0.30.0
+time: 2024-04-22T20:40:23.734564023Z
