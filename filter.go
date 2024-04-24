@@ -2,9 +2,10 @@ package opslevel_k8s_controller
 
 import (
 	"encoding/json"
+	"strconv"
+
 	opslevel_jq_parser "github.com/opslevel/opslevel-jq-parser/v2024"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strconv"
 )
 
 type K8SResource struct {
