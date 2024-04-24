@@ -59,7 +59,11 @@ func (c *K8SController) mainloop(item interface{}) {
 		log.Debug().Msgf("object with key '%s' skipped because it was not found", event.Key)
 		return
 	}
-	if c.filter.Matches(obj) {
+	if !c.filter.MatchesNamespace(obj) {
+		log.Debug().Msgf("object with key '%s' skipped because it doesn't match targeted namespaces", event.Key)
+		return
+	}
+	if c.filter.MatchesFilter(obj) {
 		log.Debug().Msgf("object with key '%s' skipped because it matches filter", event.Key)
 		return
 	}
