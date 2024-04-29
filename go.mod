@@ -7,7 +7,7 @@ require (
 	github.com/opslevel/opslevel-jq-parser/v2024 v2024.3.15
 	github.com/rocktavious/autopilot/v2023 v2023.12.7
 	github.com/rs/zerolog v1.32.0
-	k8s.io/apimachinery v0.29.3
+	k8s.io/apimachinery v0.29.4
 	k8s.io/client-go v0.29.3
 	k8s.io/klog/v2 v2.120.1
 )
