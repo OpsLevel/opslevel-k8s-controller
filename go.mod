@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/go-logr/logr v1.4.1
-	github.com/opslevel/opslevel-jq-parser/v2024 v2024.3.15
+	github.com/opslevel/opslevel-jq-parser/v2024 v2024.4.26
 	github.com/rocktavious/autopilot/v2023 v2023.12.7
 	github.com/rs/zerolog v1.32.0
 	k8s.io/apimachinery v0.29.3
