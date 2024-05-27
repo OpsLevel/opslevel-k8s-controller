@@ -1,0 +1,3 @@
+kind: Dependency
+body: Bump github.com/go-logr/logr from 1.4.1 to 1.4.2
+time: 2024-05-27T20:43:22.846870512Z
