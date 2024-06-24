@@ -1,0 +1,3 @@
+kind: Dependency
+body: Bump github.com/hashicorp/go-retryablehttp from 0.7.5 to 0.7.7
+time: 2024-06-24T22:13:43.214940249Z
