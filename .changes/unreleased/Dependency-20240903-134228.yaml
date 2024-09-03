@@ -1,3 +1,0 @@
-kind: Dependency
-body: bump opslevel-jq-parser to v2024.9.3 and github.com/go-logr/logr to v1.4.2
-time: 2024-09-03T13:42:28.167734-05:00
