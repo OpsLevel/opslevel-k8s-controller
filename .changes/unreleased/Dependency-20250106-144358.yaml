@@ -1,0 +1,3 @@
+kind: Dependency
+body: bump k8s.io/apimachinery to v0.30.0, bump k8s.io/client-go to v0.30.0
+time: 2025-01-06T14:43:58.181142-06:00
